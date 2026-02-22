@@ -30,8 +30,8 @@ export function AuthProvider({ children }) {
     return data
   }
 
-  const register = async (email, password) => {
-    const data = await apiRegister(email, password)
+  const register = async (email, username, password) => {
+    const data = await apiRegister(email, username, password)
     setUser(data.user)
     return data
   }

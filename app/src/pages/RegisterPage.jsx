@@ -5,9 +5,11 @@ import { Button, Input, LoadingSpinner } from '../components/ui'
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
+  const [domainRejected, setDomainRejected] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
   const { register, isAuthenticated, isLoading: authLoading } = useAuth()
@@ -43,12 +45,18 @@ export default function RegisterPage() {
     }
 
     setIsLoading(true)
+    setDomainRejected(false)
 
     try {
-      await register(email, password)
+      await register(email, username, password)
       navigate('/')
     } catch (err) {
-      setError(err.message || 'Registration failed. Please try again.')
+      if (err.status === 403) {
+        setDomainRejected(true)
+        setError('')
+      } else {
+        setError(err.message || 'Registration failed. Please try again.')
+      }
     } finally {
       setIsLoading(false)
     }
@@ -60,6 +68,16 @@ export default function RegisterPage() {
         <h1 className="text-2xl font-bold text-center mb-6 text-gray-900">
           Create Account
         </h1>
+
+        {domainRejected && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded mb-4 text-sm">
+            <p className="font-semibold mb-1">Email domain not permitted</p>
+            <p>
+              Registration is restricted to specific email domains. Please use
+              an authorised email address or contact an administrator for access.
+            </p>
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">
@@ -74,6 +92,15 @@ export default function RegisterPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
+            required
+          />
+
+          <Input
+            label="Username"
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="At least 3 characters"
             required
           />
 

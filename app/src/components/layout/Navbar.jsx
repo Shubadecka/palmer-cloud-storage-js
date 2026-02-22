@@ -14,6 +14,9 @@ export default function Navbar() {
         <NavLink to="/" className={linkClass} end>
           Dashboard
         </NavLink>
+        <NavLink to="/pages" className={linkClass}>
+          Pages
+        </NavLink>
         <NavLink to="/upload" className={linkClass}>
           Upload Page
         </NavLink>

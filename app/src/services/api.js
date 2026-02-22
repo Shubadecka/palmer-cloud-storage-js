@@ -32,13 +32,21 @@ async function request(endpoint, options = {}) {
 
       try {
         const errorData = await response.json()
-        errorMessage = errorData.message || errorData.error || errorMessage
+        // FastAPI wraps errors as { detail: { message: '...' } } or { detail: '...' }
+        errorMessage =
+          errorData.detail?.message ||
+          (typeof errorData.detail === 'string' ? errorData.detail : null) ||
+          errorData.message ||
+          errorData.error ||
+          errorMessage
       } catch {
         // Response wasn't JSON, use status text
         errorMessage = response.statusText || errorMessage
       }
 
-      throw new Error(errorMessage)
+      const error = new Error(errorMessage)
+      error.status = response.status
+      throw error
     }
 
     // Return null for 204 No Content
@@ -76,13 +84,14 @@ export async function login(email, password) {
 /**
  * Register a new account
  * @param {string} email
+ * @param {string} username
  * @param {string} password
  * @returns {Promise<{user: object}>}
  */
-export async function register(email, password) {
+export async function register(email, username, password) {
   return request('/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, username, password }),
   })
 }
 
@@ -169,6 +178,21 @@ export async function deleteEntry(id) {
 // ============================================
 // PAGE APIs (Journal Images)
 // ============================================
+
+/**
+ * Get all pages with optional written-date filtering
+ * @param {object} options - Filter options
+ * @param {string} options.startDate - Filter by written date range start (YYYY-MM-DD)
+ * @param {string} options.endDate - Filter by written date range end (YYYY-MM-DD)
+ * @returns {Promise<{pages: array, total: number}>}
+ */
+export async function getPages({ startDate, endDate } = {}) {
+  const params = new URLSearchParams()
+  if (startDate) params.append('startDate', startDate)
+  if (endDate) params.append('endDate', endDate)
+  const qs = params.toString()
+  return request(qs ? `/pages?${qs}` : '/pages')
+}
 
 /**
  * Get a page by ID (returns image URL/data)
