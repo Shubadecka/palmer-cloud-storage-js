@@ -1,30 +1,22 @@
-# Journal Transcription App
+# palmer-cloud-storage-js
 
-A React frontend for transcribing and managing journal page entries.
-
-## Features
-
-- User authentication (login/register)
-- Upload journal page images with drag-and-drop
-- View all journal entries sorted by date
-- Filter entries by date range
-- View individual entries with lazy-loaded images
-- Delete entries with confirmation
+React frontend for a personal journal transcription and information retrieval app. I have always wanted my journals to be searchable and discussable with a LLM, this will eventually do all that. Upload images of handwritten journal pages, browse transcribed entries by date, and manage your journal archive.
+Requires the [backend](https://github.com/Shubadecka/pcs-api) and an OCR model on ollama to be running at the same time.
 
 ## Tech Stack
 
-- **React 18** - UI framework
-- **Vite** - Build tool and dev server
-- **React Router** - Client-side routing
-- **Tailwind CSS** - Styling
-- **date-fns** - Date formatting
+- **Framework:** React 18 + Vite
+- **Routing:** React Router DOM 6
+- **Styling:** Tailwind CSS
+- **Utilities:** date-fns
+- **Backend:** [pcs-api](../pcs-api) (FastAPI)
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 18+ installed
-- Backend API running on `http://localhost:3001` (or update proxy in `vite.config.js`)
+- Node.js 18+
+- [pcs-api](../pcs-api) running on `localhost:1442`
 
 ### Installation
 
@@ -35,72 +27,61 @@ npm install
 
 ### Development
 
-Start the development server:
-
 ```bash
 npm run dev
 ```
 
-The app will be available at `http://localhost:5173`
+The app runs at `http://localhost:5173`. API requests to `/api/*` are proxied to `http://localhost:1442` via Vite's dev server proxy.
 
-### Production Build
-
-Build for production:
+### Production build
 
 ```bash
 npm run build
-```
-
-Preview the production build:
-
-```bash
 npm run preview
 ```
 
-The built files will be in the `dist/` directory.
+## Routes
 
-## API Configuration
+| Path | Description |
+|---|---|
+| `/login` | Login page |
+| `/register` | Registration page |
+| `/` | Dashboard — all journal entries with date filtering |
+| `/pages` | Grid view of uploaded journal pages |
+| `/upload` | Upload a new journal page image |
+| `/entries/:id` | Individual entry detail view |
 
-The app expects a backend API at `http://localhost:3001`. The Vite dev server proxies `/api/*` requests to this backend.
-
-To change the backend URL, edit `vite.config.js`:
-
-```js
-server: {
-  proxy: {
-    '/api': {
-      target: 'http://your-backend-url:port',
-      changeOrigin: true,
-    },
-  },
-}
-```
+All routes except `/login` and `/register` require authentication.
 
 ## Project Structure
 
 ```
-app/
-├── src/
-│   ├── components/       # Reusable components
-│   │   ├── auth/        # Authentication components
-│   │   ├── entries/     # Entry-related components
-│   │   ├── layout/      # Layout components (Header, Navbar)
-│   │   ├── pages/       # Page-specific components
-│   │   └── ui/          # UI primitives (Button, Input, Modal)
-│   ├── context/         # React contexts (AuthContext)
-│   ├── hooks/           # Custom hooks (useAuth)
-│   ├── pages/           # Page components
-│   ├── services/        # API service layer
-│   ├── App.jsx          # Main app component
-│   └── main.jsx         # Entry point
-├── index.html
-└── package.json
+palmer-cloud-storage-js/
+├── app/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── auth/        # ProtectedRoute
+│   │   │   ├── entries/     # EntryCard, EntryDetail, EntryList
+│   │   │   ├── layout/      # Header, Layout, Navbar
+│   │   │   ├── pages/       # ImagePreview, PageImageViewer, PageUpload
+│   │   │   └── ui/          # Button, Input, LoadingSpinner, Modal
+│   │   ├── context/         # AuthContext — global auth state
+│   │   ├── hooks/           # useAuth
+│   │   ├── pages/           # Page-level route components
+│   │   ├── services/        # api.js — centralized fetch wrapper
+│   │   ├── App.jsx          # Root component + routing
+│   │   └── main.jsx         # Entry point
+│   ├── package.json
+│   ├── vite.config.js
+│   ├── tailwind.config.js
+│   └── index.html
+└── README.md
 ```
 
-## Available Routes
+## Authentication
 
-- `/login` - User login page
-- `/register` - User registration page
-- `/` - Dashboard with all entries
-- `/upload` - Upload new journal page
-- `/entry/:id` - View individual entry details
+Auth state is managed globally via `AuthContext`. On app load, a `GET /api/auth/me` request checks for an active session. Login and registration set an httpOnly cookie (managed by the backend); all API requests include `credentials: 'include'` so the cookie is sent automatically. Protected routes redirect unauthenticated users to `/login`.
+
+## API Connection
+
+In development, Vite proxies `/api/*` to `http://localhost:1442`, so no CORS configuration is needed. All API calls go through `app/src/services/api.js`, which handles request formatting and parses FastAPI error responses.
