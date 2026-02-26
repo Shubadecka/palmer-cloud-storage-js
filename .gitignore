@@ -1,0 +1,9 @@
+.cursor/
+.vscode/
+.DS_Store
+.env
+pcs.env
+dist/
+app/node_modules/
+app/dist/
+docs/api_contract.md
