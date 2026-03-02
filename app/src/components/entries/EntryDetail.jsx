@@ -1,4 +1,4 @@
-import { format } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 
 export default function EntryDetail({ entry }) {
   return (
@@ -6,7 +6,7 @@ export default function EntryDetail({ entry }) {
       <div className="flex justify-between items-start mb-4">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">
-            {format(new Date(entry.date), 'EEEE, MMMM d, yyyy')}
+            {format(parseISO(entry.date), 'EEEE, MMMM d, yyyy')}
           </h3>
           <p className="text-sm text-gray-500 mt-1">
             Entry ID: {entry.id}

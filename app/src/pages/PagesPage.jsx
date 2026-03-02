@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { LoadingSpinner } from '../components/ui'
-import { getPages } from '../services/api'
+import { Button, LoadingSpinner, Modal } from '../components/ui'
+import { getPages, updatePage, processPage } from '../services/api'
 
 function StatusBadge({ status }) {
   const styles =
@@ -27,7 +27,9 @@ function WrittenDateRange({ startDate, endDate }) {
   )
 }
 
-function PageCard({ page }) {
+function PageCard({ page, onEdit, onTranscribe, isProcessing }) {
+  const isTranscribed = page.status === 'transcribed'
+
   return (
     <div className="bg-white rounded-lg shadow-sm border overflow-hidden flex flex-col">
       <div className="bg-gray-100 aspect-[3/4] overflow-hidden flex items-center justify-center">
@@ -45,7 +47,51 @@ function PageCard({ page }) {
         {page.notes && (
           <p className="text-xs text-gray-500 line-clamp-2">{page.notes}</p>
         )}
-        <p className="text-xs text-gray-400">Uploaded {page.date}</p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs text-gray-400">Uploaded {page.date}</p>
+          <button
+            onClick={() => onEdit(page)}
+            className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-0.5"
+          >
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            Edit
+          </button>
+        </div>
+        <button
+          onClick={() => onTranscribe(page)}
+          disabled={isProcessing}
+          className={`mt-0.5 w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
+            isTranscribed
+              ? 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border border-yellow-200'
+              : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
+          } disabled:opacity-50 disabled:cursor-not-allowed`}
+        >
+          {isProcessing ? (
+            <>
+              <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              Processing…
+            </>
+          ) : isTranscribed ? (
+            <>
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Re-transcribe
+            </>
+          ) : (
+            <>
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Transcribe
+            </>
+          )}
+        </button>
       </div>
     </div>
   )
@@ -57,6 +103,13 @@ export default function PagesPage() {
   const [error, setError] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [editingPage, setEditingPage] = useState(null)
+  const [editStartDate, setEditStartDate] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const [processingPageId, setProcessingPageId] = useState(null)
+  const [confirmReprocessPage, setConfirmReprocessPage] = useState(null)
+  const [processError, setProcessError] = useState('')
 
   useEffect(() => {
     async function fetchPages() {
@@ -76,6 +129,55 @@ export default function PagesPage() {
     }
     fetchPages()
   }, [startDate, endDate])
+
+  const handleTranscribeClick = (page) => {
+    setProcessError('')
+    if (page.status === 'transcribed') {
+      setConfirmReprocessPage(page)
+    } else {
+      runProcessPage(page.id)
+    }
+  }
+
+  const runProcessPage = async (pageId) => {
+    setProcessingPageId(pageId)
+    setConfirmReprocessPage(null)
+    setProcessError('')
+
+    try {
+      const data = await processPage(pageId)
+      const updated = data.page || data
+      setPages((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)))
+    } catch (err) {
+      setProcessError(err.message || 'Failed to process page. Please try again.')
+    } finally {
+      setProcessingPageId(null)
+    }
+  }
+
+  const handleOpenEdit = (page) => {
+    setEditingPage(page)
+    setEditStartDate(page.page_start_date || '')
+    setSaveError('')
+  }
+
+  const handleSavePage = async () => {
+    setIsSaving(true)
+    setSaveError('')
+
+    try {
+      const data = await updatePage(editingPage.id, {
+        page_start_date: editStartDate || null,
+      })
+      const updated = data.page || data
+      setPages((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)))
+      setEditingPage(null)
+    } catch (err) {
+      setSaveError(err.message || 'Failed to save changes. Please try again.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
@@ -140,12 +242,96 @@ export default function PagesPage() {
             : 'No pages uploaded yet.'}
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {pages.map((page) => (
-            <PageCard key={page.id} page={page} />
-          ))}
-        </div>
+        <>
+          {processError && (
+            <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">{processError}</div>
+          )}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {pages.map((page) => (
+              <PageCard
+                key={page.id}
+                page={page}
+                onEdit={handleOpenEdit}
+                onTranscribe={handleTranscribeClick}
+                isProcessing={processingPageId === page.id}
+              />
+            ))}
+          </div>
+        </>
       )}
+
+      <Modal
+        isOpen={!!confirmReprocessPage}
+        onClose={() => setConfirmReprocessPage(null)}
+        title="Re-transcribe Page"
+      >
+        <div className="space-y-4">
+          <div className="flex gap-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <svg className="w-5 h-5 text-yellow-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <p className="text-sm text-yellow-800">
+              This page has already been transcribed. Re-transcribing will likely create <strong>duplicate entries</strong>. You will need to manually delete any duplicates afterwards.
+            </p>
+          </div>
+          <p className="text-sm text-gray-600">Are you sure you want to continue?</p>
+          <div className="flex gap-3">
+            <Button
+              variant="primary"
+              onClick={() => runProcessPage(confirmReprocessPage.id)}
+            >
+              Yes, re-transcribe
+            </Button>
+            <Button variant="secondary" onClick={() => setConfirmReprocessPage(null)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={!!editingPage}
+        onClose={() => !isSaving && setEditingPage(null)}
+        title="Edit Page"
+      >
+        <div className="space-y-4">
+          <div>
+            <label
+              htmlFor="edit-page-start-date"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Start date
+            </label>
+            <p className="text-xs text-gray-500 mb-2">
+              The date of the first entry on this page. This is not necessarily the date of every entry — a page may span multiple days.
+            </p>
+            <input
+              id="edit-page-start-date"
+              type="date"
+              value={editStartDate}
+              onChange={(e) => setEditStartDate(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          {saveError && (
+            <div className="bg-red-50 text-red-600 p-3 rounded text-sm">
+              {saveError}
+            </div>
+          )}
+          <div className="flex gap-3">
+            <Button variant="primary" onClick={handleSavePage} isLoading={isSaving}>
+              {isSaving ? 'Saving...' : 'Save Changes'}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setEditingPage(null)}
+              disabled={isSaving}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

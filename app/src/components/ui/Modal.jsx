@@ -1,5 +1,10 @@
-export default function Modal({ isOpen, onClose, title, children }) {
+export default function Modal({ isOpen, onClose, title, children, size = 'md' }) {
   if (!isOpen) return null
+
+  const sizeClasses = {
+    md: 'max-w-md',
+    lg: 'max-w-2xl',
+  }
 
   return (
     <div className="fixed inset-0 z-50">
@@ -11,7 +16,7 @@ export default function Modal({ isOpen, onClose, title, children }) {
 
       {/* Modal content */}
       <div className="fixed inset-0 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 relative">
+        <div className={`bg-white rounded-lg shadow-xl ${sizeClasses[size] || sizeClasses.md} w-full p-6 relative`}>
           {/* Close button */}
           <button
             onClick={onClose}

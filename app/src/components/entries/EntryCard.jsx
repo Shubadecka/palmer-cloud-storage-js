@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { format } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 
 export default function EntryCard({ entry }) {
   // Truncate transcription for preview
@@ -14,7 +14,7 @@ export default function EntryCard({ entry }) {
     >
       <div className="flex justify-between items-start mb-3">
         <time className="text-sm font-semibold text-gray-900">
-          {format(new Date(entry.date), 'MMMM d, yyyy')}
+          {format(parseISO(entry.date), 'MMMM d, yyyy')}
         </time>
         <span
           className={`text-xs px-2 py-1 rounded-full font-medium ${

@@ -218,6 +218,31 @@ export async function uploadPage(formData) {
 }
 
 /**
+ * Run OCR and transcription processing on a page
+ * @param {number|string} id
+ * @returns {Promise<{page: object, entries: array}>}
+ */
+export async function processPage(id) {
+  return request(`/pages/${id}/process`, {
+    method: 'POST',
+  })
+}
+
+/**
+ * Update a page's start date
+ * @param {number|string} id
+ * @param {object} data - Fields to update
+ * @param {string|null} data.page_start_date - New start date (YYYY-MM-DD), or null to clear
+ * @returns {Promise<{page: object}>}
+ */
+export async function updatePage(id, data) {
+  return request(`/pages/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
+/**
  * Delete a page and all its entries
  * @param {number|string} id
  * @returns {Promise<null>}
