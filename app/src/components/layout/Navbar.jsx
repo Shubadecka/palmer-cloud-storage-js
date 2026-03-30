@@ -12,10 +12,10 @@ export default function Navbar() {
     <nav className="bg-gray-50 border-b">
       <div className="max-w-7xl mx-auto px-4 py-2 flex gap-2">
         <NavLink to="/" className={linkClass} end>
-          Dashboard
-        </NavLink>
-        <NavLink to="/pages" className={linkClass}>
           Pages
+        </NavLink>
+        <NavLink to="/entries" className={linkClass}>
+          Entries
         </NavLink>
         <NavLink to="/upload" className={linkClass}>
           Upload Page

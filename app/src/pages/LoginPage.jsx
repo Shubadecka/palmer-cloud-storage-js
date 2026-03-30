@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import { Button, Input, LoadingSpinner } from '../components/ui'
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -32,7 +32,7 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      await login(email, password)
+      await login(username, password)
       navigate('/')
     } catch (err) {
       setError(err.message || 'Login failed. Please check your credentials.')
@@ -56,11 +56,11 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
-            label="Email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
+            label="Username"
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="your_username"
             required
           />
 

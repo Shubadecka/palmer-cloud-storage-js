@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { Button, LoadingSpinner, Modal } from '../components/ui'
 import { EntryDetail } from '../components/entries'
 import { PageImageViewer } from '../components/pages'
-import { getEntry, deleteEntry, updateEntry } from '../services/api'
+import { getEntry, deleteEntry, updateEntry, improveEntry } from '../services/api'
 
 export default function EntryDetailPage() {
   const { id } = useParams()
@@ -19,6 +19,12 @@ export default function EntryDetailPage() {
   const [editTranscription, setEditTranscription] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+
+  const [isSavingDate, setIsSavingDate] = useState(false)
+  const [dateSaveError, setDateSaveError] = useState('')
+
+  const [showImproveModal, setShowImproveModal] = useState(false)
+  const [improveQueued, setImproveQueued] = useState(false)
 
   useEffect(() => {
     async function fetchEntry() {
@@ -38,7 +44,7 @@ export default function EntryDetailPage() {
 
   const handleOpenEdit = () => {
     setEditDate(entry.date ? entry.date.split('T')[0] : '')
-    setEditTranscription(entry.transcription || '')
+    setEditTranscription(entry.improved_transcription || entry.raw_ocr_transcription || '')
     setSaveError('')
     setShowEditModal(true)
   }
@@ -48,7 +54,7 @@ export default function EntryDetailPage() {
     setSaveError('')
 
     try {
-      const data = await updateEntry(id, { date: editDate, transcription: editTranscription })
+      const data = await updateEntry(id, { date: editDate, improved_transcription: editTranscription })
       setEntry(data.entry || data)
       setShowEditModal(false)
     } catch (err) {
@@ -63,12 +69,37 @@ export default function EntryDetailPage() {
 
     try {
       await deleteEntry(id)
-      navigate('/')
+      navigate('/entries')
     } catch (err) {
       setError('Failed to delete entry. Please try again.')
       setShowDeleteModal(false)
     } finally {
       setIsDeleting(false)
+    }
+  }
+
+  const handleDateSave = async (newDate) => {
+    setIsSavingDate(true)
+    setDateSaveError('')
+
+    try {
+      const data = await updateEntry(id, { date: newDate })
+      setEntry(data.entry || data)
+    } catch (err) {
+      setDateSaveError(err.message || 'Failed to update date. Please try again.')
+    } finally {
+      setIsSavingDate(false)
+    }
+  }
+
+  const handleImprove = async () => {
+    setShowImproveModal(false)
+
+    try {
+      await improveEntry(id)
+      setImproveQueued(true)
+    } catch (err) {
+      setError('Failed to start AI improvement. Please try again.')
     }
   }
 
@@ -87,8 +118,8 @@ export default function EntryDetailPage() {
           {error}
         </div>
         <div>
-          <Link to="/" className="text-blue-600 hover:underline">
-            Return to Dashboard
+          <Link to="/entries" className="text-blue-600 hover:underline">
+            Return to Entries
           </Link>
         </div>
       </div>
@@ -116,10 +147,10 @@ export default function EntryDetailPage() {
           The entry you're looking for doesn't exist or has been deleted.
         </p>
         <Link
-          to="/"
+          to="/entries"
           className="mt-4 inline-block text-blue-600 hover:underline"
         >
-          Return to Dashboard
+          Return to Entries
         </Link>
       </div>
     )
@@ -130,7 +161,7 @@ export default function EntryDetailPage() {
       {/* Header with back button and actions */}
       <div className="flex justify-between items-center mb-6">
         <Link
-          to="/"
+          to="/entries"
           className="text-blue-600 hover:text-blue-800 flex items-center gap-1 font-medium"
         >
           <svg
@@ -146,9 +177,29 @@ export default function EntryDetailPage() {
               d="M15 19l-7-7 7-7"
             />
           </svg>
-          Back to Dashboard
+          Back to Entries
         </Link>
         <div className="flex gap-2">
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setShowImproveModal(true)}
+          >
+            <svg
+              className="w-4 h-4 mr-1"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 10V3L4 14h7v7l9-11h-7z"
+              />
+            </svg>
+            Improve with AI
+          </Button>
           <Button
             variant="secondary"
             size="sm"
@@ -199,10 +250,40 @@ export default function EntryDetailPage() {
         </div>
       )}
 
+      {/* Date save error */}
+      {dateSaveError && (
+        <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm flex justify-between items-center">
+          <span>{dateSaveError}</span>
+          <button
+            onClick={() => setDateSaveError('')}
+            className="ml-4 text-red-400 hover:text-red-600 font-medium shrink-0"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* AI improvement queued notice */}
+      {improveQueued && (
+        <div className="bg-blue-50 border border-blue-200 text-blue-800 p-3 rounded mb-4 text-sm flex justify-between items-center">
+          <span>AI improvement has been queued. It may take a few minutes — refresh the page to see the result.</span>
+          <button
+            onClick={() => setImproveQueued(false)}
+            className="ml-4 text-blue-500 hover:text-blue-700 font-medium shrink-0"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Two-column layout on larger screens */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Entry details */}
-        <EntryDetail entry={entry} />
+        <EntryDetail
+          entry={entry}
+          onDateSave={handleDateSave}
+          isSavingDate={isSavingDate}
+        />
 
         {/* Page image - lazy loaded */}
         <div>
@@ -266,6 +347,38 @@ export default function EntryDetailPage() {
               variant="secondary"
               onClick={() => setShowEditModal(false)}
               disabled={isSaving}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Improve with AI modal */}
+      <Modal
+        isOpen={showImproveModal}
+        onClose={() => setShowImproveModal(false)}
+        title="Improve with AI"
+      >
+        <div className="space-y-4">
+          {entry.agent_has_improved && (
+            <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-md p-3 text-sm">
+              <strong>Note:</strong> The agent has already improved this entry. Running it again may not make the transcription better and could introduce hallucinations.
+            </div>
+          )}
+          <p className="text-gray-600 text-sm">
+            This will set an AI agent to improve this entry. The agent learns from your improvements to other entries, so the more you have edited and corrected the transcription process, the better the agent will do.
+          </p>
+          <div className="flex gap-3">
+            <Button
+              variant="primary"
+              onClick={handleImprove}
+            >
+              Improve
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setShowImproveModal(false)}
             >
               Cancel
             </Button>

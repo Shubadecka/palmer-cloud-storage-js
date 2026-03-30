@@ -2,9 +2,10 @@ import { Link } from 'react-router-dom'
 import { format, parseISO } from 'date-fns'
 
 export default function EntryCard({ entry }) {
-  // Truncate transcription for preview
-  const preview = entry.transcription
-    ? entry.transcription.substring(0, 120) + (entry.transcription.length > 120 ? '...' : '')
+  // Prefer agent-improved text; fall back to raw OCR
+  const displayText = entry.improved_transcription || entry.raw_ocr_transcription
+  const preview = displayText
+    ? displayText.substring(0, 120) + (displayText.length > 120 ? '...' : '')
     : 'No transcription yet'
 
   return (

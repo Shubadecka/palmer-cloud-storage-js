@@ -2,13 +2,15 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button, Input } from '../components/ui'
 import { PageUpload, ImagePreview } from '../components/pages'
-import { uploadPage } from '../services/api'
+import { uploadPage, processPage } from '../services/api'
 
 export default function UploadPage() {
   const [selectedFile, setSelectedFile] = useState(null)
-  const [date, setDate] = useState('')
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [pageStartDate, setPageStartDate] = useState('')
   const [notes, setNotes] = useState('')
   const [isUploading, setIsUploading] = useState(false)
+  const [uploadStatus, setUploadStatus] = useState('')
   const [error, setError] = useState('')
 
   const navigate = useNavigate()
@@ -23,27 +25,36 @@ export default function UploadPage() {
     }
 
     if (!date) {
-      setError('Please enter the journal page date')
+      setError('Please enter the uploaded date')
       return
     }
 
     setIsUploading(true)
+    setUploadStatus('Uploading...')
 
     try {
-      // Create FormData for file upload
       const formData = new FormData()
       formData.append('image', selectedFile)
       formData.append('date', date)
+      if (pageStartDate) {
+        formData.append('pageStartDate', pageStartDate)
+      }
       if (notes) {
         formData.append('notes', notes)
       }
 
-      await uploadPage(formData)
+      const data = await uploadPage(formData)
+      const pageId = data.page?.id || data.id
+
+      setUploadStatus('Transcribing...')
+      await processPage(pageId)
+
       navigate('/')
     } catch (err) {
       setError(err.message || 'Upload failed. Please try again.')
     } finally {
       setIsUploading(false)
+      setUploadStatus('')
     }
   }
 
@@ -76,13 +87,20 @@ export default function UploadPage() {
           <ImagePreview file={selectedFile} onRemove={handleRemoveFile} />
         </div>
 
-        {/* Date Input */}
+        {/* Date Inputs */}
         <Input
-          label="Journal Page Date"
+          label="Uploaded Date"
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
           required
+        />
+
+        <Input
+          label="Page Start Date (optional)"
+          type="date"
+          value={pageStartDate}
+          onChange={(e) => setPageStartDate(e.target.value)}
         />
 
         {/* Notes */}
@@ -102,7 +120,7 @@ export default function UploadPage() {
         {/* Actions */}
         <div className="flex gap-4 pt-4">
           <Button type="submit" isLoading={isUploading}>
-            {isUploading ? 'Uploading...' : 'Upload Page'}
+            {isUploading ? uploadStatus : 'Upload Page'}
           </Button>
           <Button
             type="button"

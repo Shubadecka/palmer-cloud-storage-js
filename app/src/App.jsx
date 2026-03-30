@@ -29,8 +29,8 @@ function App() {
           {/* Protected routes with layout */}
           <Route element={<ProtectedRoute />}>
             <Route element={<LayoutRoute />}>
-              <Route path="/" element={<DashboardPage />} />
-              <Route path="/pages" element={<PagesPage />} />
+              <Route path="/" element={<PagesPage />} />
+              <Route path="/entries" element={<DashboardPage />} />
               <Route path="/upload" element={<UploadPage />} />
               <Route path="/entry/:id" element={<EntryDetailPage />} />
             </Route>
