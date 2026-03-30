@@ -1,10 +1,11 @@
 import EntryCard from './EntryCard'
 
-export default function EntryList({ entries }) {
-  // Sort by date, newest first
-  const sortedEntries = [...entries].sort(
-    (a, b) => new Date(b.date) - new Date(a.date)
-  )
+export default function EntryList({ entries, sortBy = 'date_written', sortOrder = 'desc' }) {
+  const sortedEntries = [...entries].sort((a, b) => {
+    const dateA = sortBy === 'date_uploaded' ? new Date(a.createdAt) : new Date(a.date)
+    const dateB = sortBy === 'date_uploaded' ? new Date(b.createdAt) : new Date(b.date)
+    return sortOrder === 'asc' ? dateA - dateB : dateB - dateA
+  })
 
   if (entries.length === 0) {
     return (

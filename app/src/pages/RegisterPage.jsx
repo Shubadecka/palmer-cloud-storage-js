@@ -110,6 +110,7 @@ export default function RegisterPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="At least 8 characters"
+            autoComplete="new-password"
             required
           />
 
@@ -119,6 +120,7 @@ export default function RegisterPage() {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             placeholder="Confirm your password"
+            autoComplete="new-password"
             required
           />
 

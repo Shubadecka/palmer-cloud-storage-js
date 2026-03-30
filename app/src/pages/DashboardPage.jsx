@@ -4,17 +4,25 @@ import { Button, LoadingSpinner, Input } from '../components/ui'
 import { EntryList } from '../components/entries'
 import { getEntries } from '../services/api'
 
+const selectClass =
+  'border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white'
+
 export default function DashboardPage() {
   const [entries, setEntries] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [sortBy, setSortBy] = useState('date_written')
+  const [sortOrder, setSortOrder] = useState('desc')
+  const [filterField, setFilterField] = useState('date_written')
 
   useEffect(() => {
     async function fetchEntries() {
+      setIsLoading(true)
+      setError('')
       try {
-        const data = await getEntries({ startDate, endDate })
+        const data = await getEntries({ startDate, endDate, sortBy, filterField })
         setEntries(data.entries || [])
       } catch (err) {
         setError('Failed to load entries. Please try again.')
@@ -25,15 +33,10 @@ export default function DashboardPage() {
     }
 
     fetchEntries()
-  }, [startDate, endDate])
+  }, [startDate, endDate, sortBy, filterField])
 
-  // Filter entries by date range (client-side backup filter)
-  const filteredEntries = entries.filter((entry) => {
-    const entryDate = new Date(entry.date)
-    if (startDate && entryDate < new Date(startDate)) return false
-    if (endDate && entryDate > new Date(endDate)) return false
-    return true
-  })
+  const filterLabel = filterField === 'date_uploaded' ? 'Upload date' : 'Written date'
+  const hasFilters = startDate || endDate
 
   if (isLoading) {
     return (
@@ -68,35 +71,87 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      {/* Date Filters */}
-      <div className="bg-white rounded-lg shadow p-4 mb-6">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <Input
-            type="date"
-            label="From"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="flex-1"
-          />
-          <Input
-            type="date"
-            label="To"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="flex-1"
-          />
-          {(startDate || endDate) && (
+      {/* Sort & Filter Controls */}
+      <div className="bg-white rounded-lg shadow p-4 mb-4">
+        <div className="flex flex-wrap gap-4 items-end">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-600">Sort by</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className={selectClass}
+            >
+              <option value="date_written">Date Written</option>
+              <option value="date_uploaded">Date Uploaded</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-600">Order</label>
+            <button
+              onClick={() => setSortOrder((o) => (o === 'desc' ? 'asc' : 'desc'))}
+              className={`${selectClass} flex items-center gap-1.5 cursor-pointer`}
+            >
+              {sortOrder === 'desc' ? (
+                <>
+                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                  Newest first
+                </>
+              ) : (
+                <>
+                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                  </svg>
+                  Oldest first
+                </>
+              )}
+            </button>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-600">Filter by</label>
+            <select
+              value={filterField}
+              onChange={(e) => {
+                setFilterField(e.target.value)
+                setStartDate('')
+                setEndDate('')
+              }}
+              className={selectClass}
+            >
+              <option value="date_written">Date Written</option>
+              <option value="date_uploaded">Date Uploaded</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-600">{filterLabel} from</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className={selectClass}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-600">{filterLabel} to</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className={selectClass}
+            />
+          </div>
+          {hasFilters && (
             <div className="flex items-end">
-              <Button
-                variant="secondary"
-                size="sm"
+              <button
                 onClick={() => {
                   setStartDate('')
                   setEndDate('')
                 }}
+                className="text-sm text-blue-600 hover:underline pb-2"
               >
-                Clear Filters
-              </Button>
+                Clear filters
+              </button>
             </div>
           )}
         </div>
@@ -110,12 +165,12 @@ export default function DashboardPage() {
       )}
 
       {/* Entry List */}
-      <EntryList entries={filteredEntries} />
+      <EntryList entries={entries} sortBy={sortBy} sortOrder={sortOrder} />
 
       {/* Results count */}
-      {filteredEntries.length > 0 && (
+      {entries.length > 0 && (
         <p className="mt-4 text-sm text-gray-500 text-center">
-          Showing {filteredEntries.length} {filteredEntries.length === 1 ? 'entry' : 'entries'}
+          Showing {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
         </p>
       )}
     </div>

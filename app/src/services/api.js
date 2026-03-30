@@ -69,15 +69,15 @@ async function request(endpoint, options = {}) {
 // ============================================
 
 /**
- * Log in with email and password
- * @param {string} email
+ * Log in with username and password
+ * @param {string} username
  * @param {string} password
  * @returns {Promise<{user: object}>}
  */
-export async function login(email, password) {
+export async function login(username, password) {
   return request('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ username, password }),
   })
 }
 
@@ -124,6 +124,8 @@ export async function getCurrentUser() {
  * @param {string} options.endDate - Filter by end date
  * @param {number} options.page - Page number for pagination
  * @param {number} options.limit - Items per page
+ * @param {string} options.sortBy - Sort field: 'date_written' (default) or 'date_uploaded'
+ * @param {string} options.filterField - Filter field: 'date_written' (default) or 'date_uploaded'
  * @returns {Promise<{entries: array, total: number}>}
  */
 export async function getEntries(options = {}) {
@@ -133,6 +135,8 @@ export async function getEntries(options = {}) {
   if (options.endDate) params.append('endDate', options.endDate)
   if (options.page) params.append('page', options.page)
   if (options.limit) params.append('limit', options.limit)
+  if (options.sortBy) params.append('sortBy', options.sortBy)
+  if (options.filterField) params.append('filterField', options.filterField)
 
   const queryString = params.toString()
   const endpoint = queryString ? `/entries?${queryString}` : '/entries'
@@ -154,13 +158,26 @@ export async function getEntry(id) {
  * @param {number|string} id
  * @param {object} data - Fields to update
  * @param {string} data.date - New date
- * @param {string} data.transcription - Updated transcription
+ * @param {string} data.improved_transcription - Updated transcription text
  * @returns {Promise<{entry: object}>}
  */
 export async function updateEntry(id, data) {
   return request(`/entries/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
+  })
+}
+
+/**
+ * Trigger agentic OCR cleanup for an entry.
+ * Returns immediately (202 Accepted). Poll GET /entries/:id and check
+ * agent_has_improved to detect when the agent finishes.
+ * @param {number|string} id
+ * @returns {Promise<null>}
+ */
+export async function improveEntry(id) {
+  return request(`/entries/${id}/improve`, {
+    method: 'POST',
   })
 }
 
@@ -180,16 +197,20 @@ export async function deleteEntry(id) {
 // ============================================
 
 /**
- * Get all pages with optional written-date filtering
+ * Get all pages with optional date filtering
  * @param {object} options - Filter options
- * @param {string} options.startDate - Filter by written date range start (YYYY-MM-DD)
- * @param {string} options.endDate - Filter by written date range end (YYYY-MM-DD)
+ * @param {string} options.startDate - Filter range start (YYYY-MM-DD)
+ * @param {string} options.endDate - Filter range end (YYYY-MM-DD)
+ * @param {string} options.sortBy - Sort field: 'date_written' (default) or 'date_uploaded'
+ * @param {string} options.filterField - Filter field: 'date_written' (default) or 'date_uploaded'
  * @returns {Promise<{pages: array, total: number}>}
  */
-export async function getPages({ startDate, endDate } = {}) {
+export async function getPages({ startDate, endDate, sortBy, filterField } = {}) {
   const params = new URLSearchParams()
   if (startDate) params.append('startDate', startDate)
   if (endDate) params.append('endDate', endDate)
+  if (sortBy) params.append('sortBy', sortBy)
+  if (filterField) params.append('filterField', filterField)
   const qs = params.toString()
   return request(qs ? `/pages?${qs}` : '/pages')
 }
