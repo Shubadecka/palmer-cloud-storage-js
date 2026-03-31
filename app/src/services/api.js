@@ -137,6 +137,7 @@ export async function getEntries(options = {}) {
   if (options.limit) params.append('limit', options.limit)
   if (options.sortBy) params.append('sortBy', options.sortBy)
   if (options.filterField) params.append('filterField', options.filterField)
+  if (options.pageId) params.append('pageId', options.pageId)
 
   const queryString = params.toString()
   const endpoint = queryString ? `/entries?${queryString}` : '/entries'
@@ -225,16 +226,20 @@ export async function getPage(id) {
 }
 
 /**
- * Upload a new journal page image
- * @param {FormData} formData - Must include 'image' file and 'date' string
- * @returns {Promise<{page: object}>}
+ * Upload one or more journal page images in a single batch request.
+ * @param {File[]} files - Image files to upload
+ * @param {string} date - Shared upload date (YYYY-MM-DD)
+ * @param {Array<{pageStartDate?: string}>} metadata - Per-file metadata aligned by index
+ * @returns {Promise<{pages: array, total: number}>}
  */
-export async function uploadPage(formData) {
-  return request('/pages', {
+export async function uploadPagesBatch(files, date, metadata = []) {
+  const formData = new FormData()
+  files.forEach((file) => formData.append('images', file))
+  formData.append('date', date)
+  formData.append('metadata', JSON.stringify(metadata))
+  return request('/pages/batch', {
     method: 'POST',
     body: formData,
-    // Note: Don't set Content-Type header for FormData
-    // The browser will set it automatically with the boundary
   })
 }
 
@@ -250,10 +255,11 @@ export async function processPage(id) {
 }
 
 /**
- * Update a page's start date
+ * Update a page's editable fields
  * @param {number|string} id
  * @param {object} data - Fields to update
  * @param {string|null} data.page_start_date - New start date (YYYY-MM-DD), or null to clear
+ * @param {string|null} data.notes - Notes text, or null to clear
  * @returns {Promise<{page: object}>}
  */
 export async function updatePage(id, data) {

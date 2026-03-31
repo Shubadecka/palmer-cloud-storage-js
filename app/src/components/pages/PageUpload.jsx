@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 
-export default function PageUpload({ onFileSelect, selectedFile }) {
+export default function PageUpload({ onFilesSelect, fileCount }) {
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef(null)
 
@@ -18,22 +18,27 @@ export default function PageUpload({ onFileSelect, selectedFile }) {
     e.preventDefault()
     setIsDragging(false)
 
-    const file = e.dataTransfer.files[0]
-    if (file && file.type.startsWith('image/')) {
-      onFileSelect(file)
+    const imageFiles = [...e.dataTransfer.files].filter((f) =>
+      f.type.startsWith('image/')
+    )
+    if (imageFiles.length) {
+      onFilesSelect(imageFiles)
     }
   }
 
   const handleFileInput = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-      onFileSelect(file)
+    const imageFiles = [...e.target.files]
+    if (imageFiles.length) {
+      onFilesSelect(imageFiles)
     }
+    e.target.value = ''
   }
 
   const handleClick = () => {
     fileInputRef.current?.click()
   }
+
+  const hasFiles = fileCount > 0
 
   return (
     <div
@@ -47,7 +52,7 @@ export default function PageUpload({ onFileSelect, selectedFile }) {
         ${
           isDragging
             ? 'border-blue-500 bg-blue-50'
-            : selectedFile
+            : hasFiles
             ? 'border-green-400 bg-green-50'
             : 'border-gray-300 hover:border-gray-400 bg-gray-50'
         }
@@ -57,19 +62,20 @@ export default function PageUpload({ onFileSelect, selectedFile }) {
         ref={fileInputRef}
         type="file"
         accept="image/*"
+        multiple
         onChange={handleFileInput}
         className="hidden"
       />
 
       <svg
         className={`mx-auto h-12 w-12 ${
-          selectedFile ? 'text-green-500' : 'text-gray-400'
+          hasFiles ? 'text-green-500' : 'text-gray-400'
         }`}
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
       >
-        {selectedFile ? (
+        {hasFiles ? (
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -86,22 +92,21 @@ export default function PageUpload({ onFileSelect, selectedFile }) {
         )}
       </svg>
 
-      {selectedFile ? (
+      {hasFiles ? (
         <div className="mt-4">
-          <p className="text-green-700 font-medium">{selectedFile.name}</p>
-          <p className="text-sm text-gray-500 mt-1">
-            {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+          <p className="text-green-700 font-medium">
+            {fileCount} image{fileCount > 1 ? 's' : ''} selected
           </p>
-          <p className="text-sm text-gray-400 mt-2">Click or drag to replace</p>
+          <p className="text-sm text-gray-400 mt-2">Click or drag to add more</p>
         </div>
       ) : (
         <div className="mt-4">
           <p className="text-gray-600 font-medium">
-            Drag and drop an image here
+            Drag and drop images here
           </p>
-          <p className="text-sm text-gray-500 mt-1">or click to select a file</p>
+          <p className="text-sm text-gray-500 mt-1">or click to select files</p>
           <p className="text-xs text-gray-400 mt-2">
-            Supports: JPG, PNG, GIF, WebP
+            Supports: JPG, PNG, GIF, WebP &middot; Multiple files OK
           </p>
         </div>
       )}

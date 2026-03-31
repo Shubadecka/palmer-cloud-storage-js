@@ -1,71 +1,131 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button, Input } from '../components/ui'
-import { PageUpload, ImagePreview } from '../components/pages'
-import { uploadPage, processPage } from '../services/api'
+import { PageUpload } from '../components/pages'
+import { uploadPagesBatch, processPage } from '../services/api'
+
+function FileRow({ item, index, onChange, onRemove }) {
+  const [previewUrl, setPreviewUrl] = useState('')
+
+  useEffect(() => {
+    const url = URL.createObjectURL(item.file)
+    setPreviewUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [item.file])
+
+  return (
+    <div className="flex items-start gap-4 bg-white border rounded-lg p-3">
+      <img
+        src={previewUrl}
+        alt="Preview"
+        className="w-20 h-20 object-cover rounded flex-shrink-0"
+      />
+      <div className="flex-1 min-w-0 space-y-1">
+        <p className="text-sm font-medium text-gray-700 truncate">
+          {item.file.name}
+        </p>
+        <p className="text-xs text-gray-400">
+          {(item.file.size / 1024 / 1024).toFixed(2)} MB
+        </p>
+        <div>
+          <label className="text-xs text-gray-500">Start date (optional)</label>
+          <input
+            type="date"
+            value={item.pageStartDate}
+            onChange={(e) => onChange(index, 'pageStartDate', e.target.value)}
+            className="mt-0.5 w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => onRemove(index)}
+        className="text-red-400 hover:text-red-600 p-1 flex-shrink-0"
+        aria-label="Remove"
+      >
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  )
+}
 
 export default function UploadPage() {
-  const [selectedFile, setSelectedFile] = useState(null)
+  const [items, setItems] = useState([])
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
-  const [pageStartDate, setPageStartDate] = useState('')
-  const [notes, setNotes] = useState('')
   const [isUploading, setIsUploading] = useState(false)
-  const [uploadStatus, setUploadStatus] = useState('')
   const [error, setError] = useState('')
 
   const navigate = useNavigate()
+
+  const handleFilesSelect = useCallback((files) => {
+    setItems((prev) => [
+      ...prev,
+      ...files.map((file) => ({ file, pageStartDate: '' })),
+    ])
+  }, [])
+
+  const handleItemChange = useCallback((index, field, value) => {
+    setItems((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
+    )
+  }, [])
+
+  const handleItemRemove = useCallback((index) => {
+    setItems((prev) => prev.filter((_, i) => i !== index))
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
 
-    if (!selectedFile) {
-      setError('Please select an image')
+    if (items.length === 0) {
+      setError('Please select at least one image')
       return
     }
-
     if (!date) {
       setError('Please enter the uploaded date')
       return
     }
 
     setIsUploading(true)
-    setUploadStatus('Uploading...')
 
     try {
-      const formData = new FormData()
-      formData.append('image', selectedFile)
-      formData.append('date', date)
-      if (pageStartDate) {
-        formData.append('pageStartDate', pageStartDate)
-      }
-      if (notes) {
-        formData.append('notes', notes)
-      }
+      const files = items.map((i) => i.file)
+      const metadata = items.map((i) => ({
+        pageStartDate: i.pageStartDate || undefined,
+      }))
 
-      const data = await uploadPage(formData)
-      const pageId = data.page?.id || data.id
+      const data = await uploadPagesBatch(files, date, metadata)
+      const pageIds = (data.pages ?? []).map((p) => p.id)
 
-      setUploadStatus('Transcribing...')
-      await processPage(pageId)
+      // Queue sequential transcription so we don't overwhelm the OCR service.
+      // Runs in the background after navigation.
+      if (pageIds.length) {
+        ;(async () => {
+          for (const pid of pageIds) {
+            try {
+              await processPage(pid)
+            } catch (err) {
+              console.error(`Transcribe failed for ${pid}:`, err)
+            }
+          }
+        })()
+      }
 
       navigate('/')
     } catch (err) {
       setError(err.message || 'Upload failed. Please try again.')
     } finally {
       setIsUploading(false)
-      setUploadStatus('')
     }
-  }
-
-  const handleRemoveFile = () => {
-    setSelectedFile(null)
   }
 
   return (
     <div className="max-w-2xl mx-auto">
       <h2 className="text-2xl font-bold text-gray-900 mb-6">
-        Upload Journal Page
+        Upload Journal Pages
       </h2>
 
       {error && (
@@ -75,19 +135,33 @@ export default function UploadPage() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* File Upload */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Journal Page Image <span className="text-red-500">*</span>
+            Journal Page Images <span className="text-red-500">*</span>
           </label>
           <PageUpload
-            onFileSelect={setSelectedFile}
-            selectedFile={selectedFile}
+            onFilesSelect={handleFilesSelect}
+            fileCount={items.length}
           />
-          <ImagePreview file={selectedFile} onRemove={handleRemoveFile} />
         </div>
 
-        {/* Date Inputs */}
+        {items.length > 0 && (
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-gray-700">
+              Selected Images ({items.length})
+            </h3>
+            {items.map((item, index) => (
+              <FileRow
+                key={`${item.file.name}-${index}`}
+                item={item}
+                index={index}
+                onChange={handleItemChange}
+                onRemove={handleItemRemove}
+              />
+            ))}
+          </div>
+        )}
+
         <Input
           label="Uploaded Date"
           type="date"
@@ -96,31 +170,11 @@ export default function UploadPage() {
           required
         />
 
-        <Input
-          label="Page Start Date (optional)"
-          type="date"
-          value={pageStartDate}
-          onChange={(e) => setPageStartDate(e.target.value)}
-        />
-
-        {/* Notes */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Notes (optional)
-          </label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Any additional notes about this page..."
-          />
-        </div>
-
-        {/* Actions */}
         <div className="flex gap-4 pt-4">
           <Button type="submit" isLoading={isUploading}>
-            {isUploading ? uploadStatus : 'Upload Page'}
+            {isUploading
+              ? 'Uploading...'
+              : `Upload ${items.length || ''} Page${items.length !== 1 ? 's' : ''}`}
           </Button>
           <Button
             type="button"

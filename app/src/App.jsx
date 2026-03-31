@@ -8,6 +8,7 @@ import DashboardPage from './pages/DashboardPage'
 import UploadPage from './pages/UploadPage'
 import EntryDetailPage from './pages/EntryDetailPage'
 import PagesPage from './pages/PagesPage'
+import PageDetailPage from './pages/PageDetailPage'
 
 function LayoutRoute() {
   return (
@@ -30,6 +31,7 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<LayoutRoute />}>
               <Route path="/" element={<PagesPage />} />
+              <Route path="/pages/:id" element={<PageDetailPage />} />
               <Route path="/entries" element={<DashboardPage />} />
               <Route path="/upload" element={<UploadPage />} />
               <Route path="/entry/:id" element={<EntryDetailPage />} />
