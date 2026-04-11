@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { LoadingSpinner } from '../components/ui'
-import { getPage, getEntries, updatePage, updateEntry } from '../services/api'
+import { getPage, getEntries, updatePage, updateEntry, rotatePageImage } from '../services/api'
 
 function EditIcon({ onClick, title }) {
   return (
@@ -186,6 +186,8 @@ export default function PageDetailPage() {
   const [editNotes, setEditNotes] = useState('')
   const [isSavingPage, setIsSavingPage] = useState(false)
   const [pageSaveError, setPageSaveError] = useState('')
+  const [isRotatingImage, setIsRotatingImage] = useState(false)
+  const [imageRotateError, setImageRotateError] = useState('')
 
   const loadData = useCallback(async () => {
     setIsLoading(true)
@@ -240,6 +242,19 @@ export default function PageDetailPage() {
     setEntries((prev) =>
       prev.map((e) => (e.id === updatedEntry.id ? updatedEntry : e))
     )
+  }
+
+  const handleRotateImage = async (deltaClockwiseDegrees) => {
+    setImageRotateError('')
+    setIsRotatingImage(true)
+    try {
+      const data = await rotatePageImage(id, { deltaClockwiseDegrees })
+      setPage(data.page || data)
+    } catch (err) {
+      setImageRotateError(err.message || 'Could not rotate image')
+    } finally {
+      setIsRotatingImage(false)
+    }
   }
 
   if (isLoading) {
@@ -305,6 +320,35 @@ export default function PageDetailPage() {
                 alt="Journal page"
                 className="w-full object-contain max-h-[70vh]"
               />
+              <div className="flex flex-wrap gap-2 justify-center p-3 bg-gray-200/80 border-t border-gray-200">
+                <button
+                  type="button"
+                  disabled={isRotatingImage}
+                  onClick={() => handleRotateImage(-90)}
+                  className="text-sm px-3 py-1.5 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Rotate left 90°
+                </button>
+                <button
+                  type="button"
+                  disabled={isRotatingImage}
+                  onClick={() => handleRotateImage(90)}
+                  className="text-sm px-3 py-1.5 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Rotate right 90°
+                </button>
+                <button
+                  type="button"
+                  disabled={isRotatingImage}
+                  onClick={() => handleRotateImage(180)}
+                  className="text-sm px-3 py-1.5 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Flip 180°
+                </button>
+              </div>
+              {imageRotateError && (
+                <p className="text-xs text-red-600 px-3 pb-2">{imageRotateError}</p>
+              )}
             </div>
 
             <div className="bg-white rounded-lg border p-4 space-y-4">
