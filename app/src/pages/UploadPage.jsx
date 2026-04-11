@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button, Input } from '../components/ui'
 import { PageUpload } from '../components/pages'
-import { uploadPagesBatch, processPage } from '../services/api'
+import { uploadPagesBatch } from '../services/api'
 
 function FileRow({ item, index, onChange, onRemove }) {
   const [previewUrl, setPreviewUrl] = useState('')
@@ -13,13 +13,18 @@ function FileRow({ item, index, onChange, onRemove }) {
     return () => URL.revokeObjectURL(url)
   }, [item.file])
 
+  const rot = item.rotation ?? 0
+
   return (
     <div className="flex items-start gap-4 bg-white border rounded-lg p-3">
-      <img
-        src={previewUrl}
-        alt="Preview"
-        className="w-20 h-20 object-cover rounded flex-shrink-0"
-      />
+      <div className="w-20 h-20 flex-shrink-0 flex items-center justify-center overflow-hidden rounded bg-gray-50">
+        <img
+          src={previewUrl}
+          alt="Preview"
+          className="max-w-[5.5rem] max-h-[5.5rem] object-contain"
+          style={{ transform: `rotate(${rot}deg)` }}
+        />
+      </div>
       <div className="flex-1 min-w-0 space-y-1">
         <p className="text-sm font-medium text-gray-700 truncate">
           {item.file.name}
@@ -35,6 +40,29 @@ function FileRow({ item, index, onChange, onRemove }) {
             onChange={(e) => onChange(index, 'pageStartDate', e.target.value)}
             className="mt-0.5 w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+        </div>
+        <div className="pt-1">
+          <span className="text-xs text-gray-500 block mb-1">Rotate before upload</span>
+          <div className="flex flex-wrap gap-1">
+            <button
+              type="button"
+              onClick={() =>
+                onChange(index, 'rotation', ((rot - 90) % 360 + 360) % 360)
+              }
+              className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50"
+              title="Rotate counter-clockwise"
+            >
+              Left 90°
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange(index, 'rotation', (rot + 90) % 360)}
+              className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50"
+              title="Rotate clockwise"
+            >
+              Right 90°
+            </button>
+          </div>
         </div>
       </div>
       <button
@@ -62,7 +90,7 @@ export default function UploadPage() {
   const handleFilesSelect = useCallback((files) => {
     setItems((prev) => [
       ...prev,
-      ...files.map((file) => ({ file, pageStartDate: '' })),
+      ...files.map((file) => ({ file, pageStartDate: '', rotation: 0 })),
     ])
   }, [])
 
@@ -93,26 +121,16 @@ export default function UploadPage() {
 
     try {
       const files = items.map((i) => i.file)
-      const metadata = items.map((i) => ({
-        pageStartDate: i.pageStartDate || undefined,
-      }))
+      const metadata = items.map((i) => {
+        const meta = {
+          pageStartDate: i.pageStartDate || undefined,
+        }
+        const r = i.rotation ?? 0
+        if (r !== 0) meta.rotation = r
+        return meta
+      })
 
-      const data = await uploadPagesBatch(files, date, metadata)
-      const pageIds = (data.pages ?? []).map((p) => p.id)
-
-      // Queue sequential transcription so we don't overwhelm the OCR service.
-      // Runs in the background after navigation.
-      if (pageIds.length) {
-        ;(async () => {
-          for (const pid of pageIds) {
-            try {
-              await processPage(pid)
-            } catch (err) {
-              console.error(`Transcribe failed for ${pid}:`, err)
-            }
-          }
-        })()
-      }
+      await uploadPagesBatch(files, date, metadata)
 
       navigate('/')
     } catch (err) {

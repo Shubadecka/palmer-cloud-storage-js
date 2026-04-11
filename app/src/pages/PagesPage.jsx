@@ -108,8 +108,6 @@ function PageCard({ page, onClick, onTranscribe, onDelete, isTranscribing }) {
   )
 }
 
-const POLL_INTERVAL_MS = 4000
-
 export default function PagesPage() {
   const [pages, setPages] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -127,7 +125,6 @@ export default function PagesPage() {
   const [deleteError, setDeleteError] = useState('')
 
   const navigate = useNavigate()
-  const pollRef = useRef(null)
   const queueRef = useRef([])
   const processingRef = useRef(false)
 
@@ -173,7 +170,7 @@ export default function PagesPage() {
 
   const enqueueTranscribe = useCallback((pageIds) => {
     const newIds = pageIds.filter(
-      (id) => !queueRef.current.includes(id)
+      (id) => !queueRef.current.includes(id) && !transcribingIds.has(id)
     )
     if (!newIds.length) return
     queueRef.current.push(...newIds)
@@ -183,7 +180,7 @@ export default function PagesPage() {
       return next
     })
     drainQueue()
-  }, [drainQueue])
+  }, [drainQueue, transcribingIds])
 
   // Initial load + auto-transcribe pending pages
   useEffect(() => {
@@ -211,42 +208,6 @@ export default function PagesPage() {
     load()
     return () => { cancelled = true }
   }, [doFetch, enqueueTranscribe])
-
-  // Conditional polling while pages are pending or transcribing
-  useEffect(() => {
-    const hasPending = pages.some((p) => p.status === 'pending')
-    const hasTranscribing = transcribingIds.size > 0
-    const shouldPoll = hasPending || hasTranscribing
-
-    if (shouldPoll && !pollRef.current) {
-      pollRef.current = setInterval(async () => {
-        try {
-          const fetched = await doFetch()
-          setPages(fetched)
-
-          const newPendingIds = fetched
-            .filter((p) => p.status === 'pending')
-            .map((p) => p.id)
-            .filter((id) => !queueRef.current.includes(id))
-          if (newPendingIds.length) {
-            enqueueTranscribe(newPendingIds)
-          }
-        } catch {
-          // ignore poll errors
-        }
-      }, POLL_INTERVAL_MS)
-    } else if (!shouldPoll && pollRef.current) {
-      clearInterval(pollRef.current)
-      pollRef.current = null
-    }
-
-    return () => {
-      if (pollRef.current) {
-        clearInterval(pollRef.current)
-        pollRef.current = null
-      }
-    }
-  }, [pages, transcribingIds, doFetch, enqueueTranscribe])
 
   const handleTranscribeClick = (page) => {
     setProcessError('')

@@ -229,7 +229,7 @@ export async function getPage(id) {
  * Upload one or more journal page images in a single batch request.
  * @param {File[]} files - Image files to upload
  * @param {string} date - Shared upload date (YYYY-MM-DD)
- * @param {Array<{pageStartDate?: string}>} metadata - Per-file metadata aligned by index
+ * @param {Array<{pageStartDate?: string, rotation?: number}>} metadata - Per-file metadata aligned by index (rotation: 0|90|180|270 clockwise)
  * @returns {Promise<{pages: array, total: number}>}
  */
 export async function uploadPagesBatch(files, date, metadata = []) {
@@ -266,6 +266,19 @@ export async function updatePage(id, data) {
   return request(`/pages/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
+  })
+}
+
+/**
+ * Rotate the stored page image (±90° or 180° clockwise relative to current).
+ * @param {number|string} id
+ * @param {{ deltaClockwiseDegrees: number }} body - 90, -90, 180, or -180
+ * @returns {Promise<{page: object}>}
+ */
+export async function rotatePageImage(id, body) {
+  return request(`/pages/${id}/rotate`, {
+    method: 'POST',
+    body: JSON.stringify(body),
   })
 }
 
