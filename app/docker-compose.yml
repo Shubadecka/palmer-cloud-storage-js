@@ -6,7 +6,7 @@
 
 services:
   web:
-    image: shubadecka/genealogical-journal-assistant-frontend:v1.0.0
+    image: shubadecka/genealogical-journal-assistant-frontend:v1.0.1
     ports:
       - "${FRONTEND_PORT:-1457}:80"
     environment:

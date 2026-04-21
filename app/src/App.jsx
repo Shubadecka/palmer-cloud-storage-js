@@ -7,6 +7,7 @@ import RegisterPage from './pages/RegisterPage'
 import DashboardPage from './pages/DashboardPage'
 import UploadPage from './pages/UploadPage'
 import EntryDetailPage from './pages/EntryDetailPage'
+import JournalChatPage from './pages/JournalChatPage'
 import PagesPage from './pages/PagesPage'
 import PageDetailPage from './pages/PageDetailPage'
 
@@ -33,6 +34,7 @@ function App() {
               <Route path="/" element={<PagesPage />} />
               <Route path="/pages/:id" element={<PageDetailPage />} />
               <Route path="/entries" element={<DashboardPage />} />
+              <Route path="/chat" element={<JournalChatPage />} />
               <Route path="/upload" element={<UploadPage />} />
               <Route path="/entry/:id" element={<EntryDetailPage />} />
             </Route>

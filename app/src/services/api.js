@@ -183,6 +183,18 @@ export async function improveEntry(id) {
 }
 
 /**
+ * Send a chat turn to the journal assistant.
+ * @param {Array<{role: 'user'|'assistant', content: string}>} messages
+ * @returns {Promise<{message: {role: string, content: string}, used_tools: string[], next_cursor?: string | null}>}
+ */
+export async function chatWithJournalAgent(messages) {
+  return request('/chat/journal', {
+    method: 'POST',
+    body: JSON.stringify({ messages }),
+  })
+}
+
+/**
  * Delete an entry
  * @param {number|string} id
  * @returns {Promise<null>}

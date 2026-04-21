@@ -17,6 +17,9 @@ export default function Navbar() {
         <NavLink to="/entries" className={linkClass}>
           Entries
         </NavLink>
+        <NavLink to="/chat" className={linkClass}>
+          Chat
+        </NavLink>
         <NavLink to="/upload" className={linkClass}>
           Upload Page
         </NavLink>
